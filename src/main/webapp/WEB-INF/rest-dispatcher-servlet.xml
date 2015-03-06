@@ -1,0 +1,100 @@
+<beans xmlns="http://www.springframework.org/schema/beans"
+	xmlns:context="http://www.springframework.org/schema/context"
+	xmlns:mvc="http://www.springframework.org/schema/mvc" xmlns:security="http://www.springframework.org/schema/security"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation="
+        http://www.springframework.org/schema/beans     
+        http://www.springframework.org/schema/beans/spring-beans-3.0.xsd
+        http://www.springframework.org/schema/context 
+        http://www.springframework.org/schema/context/spring-context-3.0.xsd
+        http://www.springframework.org/schema/mvc
+        http://www.springframework.org/schema/mvc/spring-mvc-3.2.xsd
+        http://www.springframework.org/schema/security
+	    http://www.springframework.org/schema/security/spring-security-3.2.xsd">
+
+	<!-- DispatcherServlet Context: defines this servlet's request-processing 
+		infrastructure -->
+	<!-- ================================================================== -->
+	<!-- Annotation Configuration -->
+	<!-- ================================================================== -->
+	<context:annotation-config />
+
+	<context:component-scan
+		base-package="basaki.service;basaki.service.controller;basaki.service.impl;basaki.data;basaki.togglz" />
+
+	<!-- This tag allows for mapping the DispatcherServlet to "/" (thus overriding -->
+	<!-- the mapping of the container’s default Servlet), while still allowing -->
+	<!-- static resource requests to be handled by the container’s default Servlet. -->
+	<mvc:default-servlet-handler />
+
+	<!-- Enables the Spring MVC @Controller programming model -->
+	<mvc:annotation-driven>
+		<mvc:message-converters>
+			<!-- Configure bean to convert JSON to POJO and vice versa -->
+			<bean
+				class="org.springframework.http.converter.json.MappingJackson2HttpMessageConverter" />
+			<!-- Configure bean to convert XML to POJO and vice versa -->
+			<bean
+				class="org.springframework.http.converter.xml.Jaxb2RootElementHttpMessageConverter" />
+			<bean class="org.springframework.http.converter.StringHttpMessageConverter" />
+		</mvc:message-converters>
+	</mvc:annotation-driven>
+
+	<!-- Configuring Togglz -->
+	<bean id="customerServicev1" class="basaki.service.impl.CustomerServiceImpl" />
+	<bean id="customerServicev2" class="basaki.service.impl.CustomerServiceImplv2" />
+	<bean id="customerService" class="org.togglz.spring.proxy.FeatureProxyFactoryBean">
+		<property name="feature" value="REST_VERSION_FEATURE" />
+		<property name="active" ref="customerServicev1" />
+		<property name="inactive" ref="customerServicev2" />
+	</bean>
+
+	<!-- Property Configuration -->
+	<bean id="propertyFilePlaceHolderConfigurer"
+		class="org.springframework.beans.factory.config.PropertyPlaceholderConfigurer">
+		<property name="location">
+			<value>/WEB-INF/config/database.properties</value>
+		</property>
+	</bean>
+
+	<!-- Configuring data source -->
+	<bean class="org.apache.commons.dbcp.BasicDataSource" id="dataSource"
+		destroy-method="close">
+		<property name="driverClassName" value="${datasource.driver}" />
+		<property name="url" value="${datasource.url}" />
+		<property name="username" value="${datasource.username}" />
+		<property name="password" value="${datasource.password}" />
+		<property name="initialSize" value="0" />
+		<property name="maxActive" value="10" />
+		<property name="maxIdle" value="2" />
+		<property name="minIdle" value="0" />
+	</bean>
+
+	<bean class="org.springframework.jdbc.core.JdbcTemplate" id="jdbcTemplate">
+		<property ref="dataSource" name="dataSource" />
+	</bean>
+	<bean
+		class="org.springframework.jdbc.datasource.DataSourceTransactionManager"
+		id="transactionManager">
+		<property ref="dataSource" name="dataSource" />
+	</bean>
+
+	<!-- Spring Security -->
+	<security:http auto-config="true">
+		<!-- <security:intercept-url pattern="/togglz**" -->
+		<!-- access="ROLE_USER" /> -->
+		<security:intercept-url pattern="/togglz/**"
+			access="ROLE_USER" />
+		<!-- Optional - only needed for Cloud Foundry -->
+		<security:http-basic />
+	</security:http>
+
+	<security:authentication-manager>
+		<security:authentication-provider>
+			<security:user-service>
+				<security:user name="admin" password="123456"
+					authorities="ROLE_USER" />
+			</security:user-service>
+		</security:authentication-provider>
+	</security:authentication-manager>
+</beans>
